@@ -80,7 +80,7 @@ def upload_document(file_data: BinaryIO, filename: str, file_type: str = None) -
         # Make the request with a reasonable timeout
         with httpx.Client(timeout=TIMEOUT_MEDIUM) as client:
             response = client.post(
-                f"{API_URL}/api/documents",
+                f"{API_URL}/documents",
                 files=files,
                 data=data,
                 headers=headers
@@ -149,7 +149,7 @@ def generate_case_study(document_id: str, audience: str = "general") -> Dict[str
         # Make request with longer timeout since generation takes time
         with httpx.Client(timeout=TIMEOUT_LONG) as client:
             response = client.post(
-                f"{API_URL}/api/case-studies",
+                f"{API_URL}/case-studies",
                 json=data,
                 headers=headers
             )
@@ -190,7 +190,7 @@ def generate_case_study(document_id: str, audience: str = "general") -> Dict[str
             
             # Check status
             status_response = client.get(
-                f"{API_URL}/api/case-studies/{case_study_id}",
+                f"{API_URL}/case-studies/{case_study_id}",
                 headers=headers
             )
             
@@ -264,7 +264,7 @@ def improve_text(text: str, improvement_type: str = "improve") -> str:
     try:
         with httpx.Client(timeout=TIMEOUT_SHORT) as client:
             response = client.post(
-                f"{API_URL}/api/text/improve",
+                f"{API_URL}/text/improve",
                 json=data,
                 headers=headers
             )
@@ -327,7 +327,7 @@ def regenerate_case_study(case_study_id: str, audience: str) -> Dict[str, Any]:
     try:
         with httpx.Client(timeout=TIMEOUT_LONG) as client:
             response = client.post(
-                f"{API_URL}/api/case-studies/{case_study_id}/regenerate",
+                f"{API_URL}/case-studies/{case_study_id}/regenerate",
                 json=data,
                 headers=headers
             )
@@ -386,7 +386,7 @@ def save_case_study(case_study_id: str, content: Dict[str, Any]) -> Dict[str, An
     try:
         with httpx.Client(timeout=TIMEOUT_SHORT) as client:
             response = client.put(
-                f"{API_URL}/api/case-studies/{case_study_id}",
+                f"{API_URL}/case-studies/{case_study_id}",
                 json=content,
                 headers=headers
             )
