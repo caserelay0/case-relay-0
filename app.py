@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 import json
 import uuid
@@ -262,12 +263,44 @@ def upload_file():
         if is_large_file:
             logger.debug(f"Large file detected ({primary_file_size/1024/1024:.2f}MB). Using optimized processing.")
         
-        # Process the primary document
-        logger.debug(f"Processing primary document: {primary_filepath}")
-        primary_document_data = process_document(primary_filepath)
+        # Import API client for remote processing
+        from utils.api_client import upload_document, generate_case_study, APIError, APITimeoutError, APIConnectionError, ProcessingError
         
-        if not primary_document_data:
-            flash('Failed to extract content from primary document', 'danger')
+        # Process the primary document using remote API
+        logger.debug(f"Uploading document to remote API: {primary_filepath}")
+        
+        try:
+            # Open the file and send it to the API
+            with open(primary_filepath, 'rb') as file_data:
+                upload_result = upload_document(
+                    file_data,
+                    primary_original_filename,
+                    primary_file_type
+                )
+                
+                # Store the remote document metadata
+                remote_document_id = upload_result.get('document_id')
+                
+                primary_document_data = {
+                    'remote_document_id': remote_document_id,
+                    'status': 'uploaded', 
+                    'file_type': primary_file_type,
+                    'file_size': primary_file_size,
+                    'upload_time': time.time(),
+                    'text': upload_result.get('text_preview', ''),  # Store preview if available
+                    'images': []  # Will be populated from case study
+                }
+                
+                logger.debug(f"Document uploaded to API with ID: {remote_document_id}")
+                
+        except (APIError, APITimeoutError, APIConnectionError) as api_err:
+            logger.error(f"API error during document upload: {str(api_err)}")
+            flash(f"Server error: {str(api_err)}", 'danger')
+            cleanup_file(primary_filepath)
+            return redirect(url_for('index'))
+        
+        if not primary_document_data or not primary_document_data.get('remote_document_id'):
+            flash('Failed to upload document to processing server', 'danger')
             cleanup_file(primary_filepath)
             return redirect(url_for('index'))
         
@@ -392,29 +425,99 @@ def upload_file():
             primary_document_data['text'] += supplementary_text
             primary_document.extracted_data = primary_document_data
         
-        # Generate case study using combined data
-        logger.debug("Generating case study from combined documents")
-        case_study_data = generate_case_study(primary_document_data)
+        # Generate case study using the remote API
+        logger.debug("Generating case study from remote document")
         
-        if not case_study_data:
-            flash('Failed to generate case study', 'danger')
+        try:
+            # Get the remote document ID
+            remote_document_id = primary_document_data.get('remote_document_id')
+            
+            if not remote_document_id:
+                flash('Missing remote document ID for case study generation', 'danger')
+                cleanup_file(primary_filepath)
+                return redirect(url_for('index'))
+            
+            # Request case study generation from API
+            audience = request.form.get('audience', 'general')
+            logger.info(f"Requesting case study generation for document {remote_document_id}, audience: {audience}")
+            
+            case_study_data = generate_case_study(remote_document_id, audience)
+            
+            # Check if we received a valid response
+            if not case_study_data:
+                flash('Failed to generate case study from API', 'danger')
+                cleanup_file(primary_filepath)
+                return redirect(url_for('index'))
+                
+            logger.debug(f"Case study generated successfully from API: {len(json.dumps(case_study_data))} bytes")
+            
+            # If the API returned images, update the primary document data and save to DB
+            if 'images' in case_study_data and case_study_data['images']:
+                # Clear existing images
+                Image.query.filter_by(document_id=primary_document.id).delete()
+                db.session.commit()
+                
+                # Add new images from the API
+                for i, img_data in enumerate(case_study_data['images']):
+                    image = Image(
+                        document_id=primary_document.id,
+                        image_id=img_data.get('id', f"img_{i}"),
+                        caption=img_data.get('caption', f"Image {i+1}"),
+                        image_type=img_data.get('type', 'jpeg'),
+                        image_data=img_data.get('data', ''),
+                        selected=img_data.get('selected', (i < 3))  # Select first 3 by default
+                    )
+                    db.session.add(image)
+                    
+                logger.debug(f"Added {len(case_study_data['images'])} images from API response")
+            
+            # Create case study record in DB
+            case_study = CaseStudy(
+                document_id=primary_document.id,
+                title=case_study_data.get('title', 'Generated Case Study'),
+                audience=audience,
+                challenge=case_study_data.get('challenge', ''),
+                approach=case_study_data.get('approach', ''),
+                solution=case_study_data.get('solution', ''),
+                outcomes=case_study_data.get('outcomes', ''),
+                summary=case_study_data.get('summary', ''),
+                additional_data={
+                    'remote_document_id': remote_document_id,
+                    'remote_case_study_id': case_study_data.get('id'),
+                    'key_points': case_study_data.get('key_points', []),
+                },
+                html_content=case_study_data.get('html_content', '')
+            )
+            
+        except APITimeoutError as e:
+            logger.error(f"API timeout during case study generation: {str(e)}")
+            flash(f"The server took too long to generate your case study. Please try again later.", 'danger')
             cleanup_file(primary_filepath)
             return redirect(url_for('index'))
         
-        # Create case study record in DB
-        case_study = CaseStudy(
-            document_id=primary_document.id,
-            title=case_study_data['title'],
-            challenge=case_study_data['challenge'],
-            approach=case_study_data['approach'],
-            solution=case_study_data['solution'],
-            outcomes=case_study_data['outcomes'],
-            summary=case_study_data.get('summary', ''),
-            additional_data={
-                'key_points': case_study_data.get('key_points', []),
-                'images': [img['id'] for img in case_study_data.get('images', [])]
-            }
-        )
+        except APIConnectionError as e:
+            logger.error(f"API connection error during case study generation: {str(e)}")
+            flash(f"Could not connect to the processing server. Please try again later.", 'danger')
+            cleanup_file(primary_filepath)
+            return redirect(url_for('index'))
+        
+        except ProcessingError as e:
+            logger.error(f"Processing error during case study generation: {str(e)}")
+            flash(f"Error generating case study: {str(e)}", 'danger')
+            cleanup_file(primary_filepath)
+            return redirect(url_for('index'))
+        
+        except APIError as e:
+            logger.error(f"API error during case study generation: {str(e)}")
+            flash(f"Server error: {str(e)}", 'danger')
+            cleanup_file(primary_filepath)
+            return redirect(url_for('index'))
+        
+        except Exception as e:
+            logger.error(f"Unexpected error during case study generation: {str(e)}")
+            flash(f"Error generating case study: {str(e)}", 'danger')
+            cleanup_file(primary_filepath)
+            return redirect(url_for('index'))
         db.session.add(case_study)
         
         # Commit changes to DB
@@ -522,7 +625,7 @@ def editor():
 
 @app.route('/api/improve-text', methods=['POST'])
 def api_improve_text():
-    """API endpoint to improve selected text"""
+    """API endpoint to improve selected text using Render API"""
     data = request.json
     text = data.get('text')
     improvement_type = data.get('type', 'improve')  # improve, simplify, extend
@@ -531,16 +634,34 @@ def api_improve_text():
         return jsonify({'error': 'No text provided'}), 400
     
     try:
-        logger.debug(f"Improving text with type: {improvement_type}")
-        improved_text = improve_text(text, improvement_type)
-        return jsonify({'improved_text': improved_text})
+        # Import API client
+        from utils.api_client import improve_text, APIError, APITimeoutError, APIConnectionError
+        
+        logger.debug(f"Requesting text improvement from API with type: {improvement_type}")
+        
+        try:
+            improved_text = improve_text(text, improvement_type)
+            return jsonify({'improved_text': improved_text})
+            
+        except APITimeoutError as e:
+            logger.error(f"API timeout during text improvement: {str(e)}")
+            return jsonify({'error': 'The server took too long to improve the text. Please try again later.'}), 504
+            
+        except APIConnectionError as e:
+            logger.error(f"API connection error during text improvement: {str(e)}")
+            return jsonify({'error': 'Could not connect to the processing server. Please try again.'}), 502
+            
+        except APIError as e:
+            logger.error(f"API error during text improvement: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+            
     except Exception as e:
-        logger.error(f"Error improving text: {str(e)}")
+        logger.error(f"Unexpected error improving text: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/regenerate', methods=['POST'])
 def api_regenerate():
-    """API endpoint to regenerate case study with different audience"""
+    """API endpoint to regenerate case study with different audience using remote API"""
     if 'document_id' not in session or 'case_study_id' not in session:
         return jsonify({'error': 'No document ID or case study ID found'}), 400
     
@@ -550,83 +671,132 @@ def api_regenerate():
     audience = data.get('audience', 'general')
     
     try:
-        # Import models
+        # Import models and API client
         from models import Document, CaseStudy, Image
+        from utils.api_client import regenerate_case_study, APIError, APITimeoutError, APIConnectionError, ProcessingError
         
-        # Get document data from database
+        # Get document and case study from database
         document = Document.query.get(document_id)
         case_study = CaseStudy.query.get(case_study_id)
         
         if not document:
             return jsonify({'error': 'Document not found'}), 404
+        
+        if not case_study:
+            return jsonify({'error': 'Case study not found'}), 404
             
+        # Check if the document has a remote ID
         document_data = document.extracted_data
+        remote_document_id = document_data.get('remote_document_id')
+        remote_case_study_id = case_study.additional_data.get('remote_case_study_id')
+        
+        if not remote_case_study_id and not remote_document_id:
+            return jsonify({'error': 'Missing remote IDs for regeneration. This document may not be compatible with remote processing.'}), 400
+        
+        try:
+            # Use the remote case study ID if available, otherwise use document ID
+            if remote_case_study_id:
+                logger.debug(f"Regenerating case study using remote case study ID: {remote_case_study_id}, audience: {audience}")
+                case_study_data = regenerate_case_study(remote_case_study_id, audience)
+            else:
+                # Fall back to document ID and generate a new case study
+                logger.debug(f"Regenerating case study using remote document ID: {remote_document_id}, audience: {audience}")
+                from utils.api_client import generate_case_study
+                case_study_data = generate_case_study(remote_document_id, audience)
             
-        # Generate new case study with specified audience
-        logger.debug(f"Regenerating case study with audience: {audience}")
-        case_study_data = generate_case_study(document_data, audience=audience)
-        
-        if not case_study_data:
-            return jsonify({'error': 'Failed to generate case study'}), 500
-        
-        # Create a new case study or update existing one
-        if case_study:
-            # Update existing case study
-            case_study.title = case_study_data['title']
+            if not case_study_data:
+                return jsonify({'error': 'Failed to regenerate case study from API'}), 500
+                
+            logger.debug(f"Case study regenerated successfully from API: {len(json.dumps(case_study_data))} bytes")
+            
+            # Update case study record
+            case_study.title = case_study_data.get('title', 'Regenerated Case Study')
             case_study.audience = audience
-            case_study.challenge = case_study_data['challenge']
-            case_study.approach = case_study_data['approach']
-            case_study.solution = case_study_data['solution']
-            case_study.outcomes = case_study_data['outcomes']
+            case_study.challenge = case_study_data.get('challenge', '')
+            case_study.approach = case_study_data.get('approach', '')
+            case_study.solution = case_study_data.get('solution', '')
+            case_study.outcomes = case_study_data.get('outcomes', '')
             case_study.summary = case_study_data.get('summary', '')
+            case_study.html_content = case_study_data.get('html_content', '')
+            
+            # Update additional data with remote IDs
             case_study.additional_data = {
+                'remote_document_id': remote_document_id,
+                'remote_case_study_id': case_study_data.get('id', remote_case_study_id),
                 'key_points': case_study_data.get('key_points', []),
-                'images': [img['id'] for img in case_study_data.get('images', [])]
+                'regenerated_at': time.time()
             }
-        else:
-            # Create a new case study
-            case_study = CaseStudy(
-                document_id=document_id,
-                title=case_study_data['title'],
-                audience=audience,
-                challenge=case_study_data['challenge'],
-                approach=case_study_data['approach'],
-                solution=case_study_data['solution'],
-                outcomes=case_study_data['outcomes'],
-                summary=case_study_data.get('summary', ''),
-                additional_data={
-                    'key_points': case_study_data.get('key_points', []),
-                    'images': [img['id'] for img in case_study_data.get('images', [])]
-                }
-            )
-            db.session.add(case_study)
+            
+            # If the API returned new images, update them
+            if 'images' in case_study_data and case_study_data['images']:
+                # Clear existing images for this document
+                Image.query.filter_by(document_id=document_id).delete()
+                
+                # Add new images
+                for i, img_data in enumerate(case_study_data['images']):
+                    image = Image(
+                        document_id=document_id,
+                        image_id=img_data.get('id', f"img_{i}"),
+                        caption=img_data.get('caption', f"Image {i+1}"),
+                        image_type=img_data.get('type', 'jpeg'),
+                        image_data=img_data.get('data', ''),
+                        selected=img_data.get('selected', (i < 3))  # Select first 3 by default
+                    )
+                    db.session.add(image)
+                    
+                logger.debug(f"Updated {len(case_study_data['images'])} images for the regenerated case study")
+            
+            # Commit changes to database
+            db.session.commit()
+            
+            # Prepare images for the response
+            images = Image.query.filter_by(document_id=document_id).all()
+            image_list = [
+                {
+                    'id': img.image_id,
+                    'caption': img.caption,
+                    'type': img.image_type,
+                    'data': img.image_data,
+                    'selected': img.selected
+                } 
+                for img in images
+            ]
+            
+            # Create a complete response object
+            response_data = {
+                'title': case_study.title,
+                'challenge': case_study.challenge,
+                'approach': case_study.approach,
+                'solution': case_study.solution,
+                'outcomes': case_study.outcomes,
+                'summary': case_study.summary,
+                'audience': case_study.audience,
+                'key_points': case_study.additional_data.get('key_points', []),
+                'images': image_list,
+                'html_content': case_study.html_content
+            }
+            
+            return jsonify({'case_study': response_data})
+            
+        except APITimeoutError as e:
+            logger.error(f"API timeout during case study regeneration: {str(e)}")
+            return jsonify({'error': 'The server took too long to regenerate the case study. Please try again later.'}), 504
+            
+        except APIConnectionError as e:
+            logger.error(f"API connection error during case study regeneration: {str(e)}")
+            return jsonify({'error': 'Could not connect to the processing server. Please try again.'}), 502
+            
+        except ProcessingError as e:
+            logger.error(f"Processing error during case study regeneration: {str(e)}")
+            return jsonify({'error': f"Error regenerating case study: {str(e)}"}), 500
+            
+        except APIError as e:
+            logger.error(f"API error during case study regeneration: {str(e)}")
+            return jsonify({'error': str(e)}), 500
         
-        # Commit changes to DB
-        db.session.commit()
-        
-        # Update session
-        session['case_study_id'] = case_study.id
-        
-        # Prepare images for response
-        images = Image.query.filter_by(document_id=document_id).all()
-        image_list = [
-            {
-                'id': img.image_id,
-                'caption': img.caption,
-                'type': img.image_type,
-                'data': img.image_data,
-                'selected': img.selected
-            } 
-            for img in images
-        ]
-        
-        # Add images to the case study data for the response
-        case_study_data['images'] = image_list
-        
-        return jsonify({'case_study': case_study_data})
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Error regenerating case study: {str(e)}")
+        logger.error(f"Unexpected error regenerating case study: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.errorhandler(413)
@@ -712,7 +882,7 @@ def not_found(e):
 
 @app.route('/api/save-content', methods=['POST'])
 def save_content():
-    """API endpoint to save edited content"""
+    """API endpoint to save edited content locally and to remote API if available"""
     if 'case_study_id' not in session:
         return jsonify({'error': 'No case study found'}), 400
     
@@ -724,7 +894,7 @@ def save_content():
         return jsonify({'error': 'No content provided'}), 400
     
     try:
-        # Import models
+        # Import models and API client
         from models import CaseStudy
         
         # Get case study from database
@@ -733,10 +903,41 @@ def save_content():
         if not case_study:
             return jsonify({'error': 'Case study not found'}), 404
         
-        # Update the HTML content
+        # Update the HTML content locally
         case_study.html_content = html_content
         
-        # Save to database
+        # Try to sync with remote API if available
+        remote_case_study_id = case_study.additional_data.get('remote_case_study_id')
+        
+        if remote_case_study_id:
+            try:
+                # Import API client
+                from utils.api_client import save_case_study, APIError, APITimeoutError, APIConnectionError
+                
+                logger.debug(f"Saving content to remote API for case study ID: {remote_case_study_id}")
+                
+                # Prepare data for API
+                content_data = {
+                    'title': case_study.title,
+                    'challenge': case_study.challenge,
+                    'approach': case_study.approach,
+                    'solution': case_study.solution,
+                    'outcomes': case_study.outcomes,
+                    'summary': case_study.summary,
+                    'audience': case_study.audience,
+                    'html_content': html_content,
+                    'key_points': case_study.additional_data.get('key_points', [])
+                }
+                
+                # Send to API
+                api_result = save_case_study(remote_case_study_id, content_data)
+                logger.debug(f"Content synced with remote API: {api_result}")
+                
+            except (APITimeoutError, APIConnectionError, APIError) as api_err:
+                # Log the error but continue - we'll still save locally
+                logger.warning(f"Failed to sync with remote API but continuing with local save: {str(api_err)}")
+        
+        # Save to local database
         db.session.commit()
         
         return jsonify({'success': True, 'message': 'Content saved successfully'})
