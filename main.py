@@ -3,7 +3,7 @@ import multiprocessing
 import sys
 
 # Set environment variables for Gunicorn
-os.environ.setdefault("GUNICORN_TIMEOUT", "300")  # 5 minutes timeout
+os.environ.setdefault("GUNICORN_TIMEOUT", "600")  # 10 minutes timeout
 os.environ.setdefault("GUNICORN_WORKERS", "2")    # Use 2 workers for stability
 
 # Add script to modify Gunicorn worker timeout from command line

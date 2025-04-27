@@ -4,6 +4,7 @@ import logging
 import threading
 import queue
 from typing import Dict, Any, List, Optional
+import textwrap
 
 # Import the OpenAI client
 from openai import OpenAI
@@ -240,12 +241,6 @@ def generate_case_study(document_data: Dict[str, Any], audience: str = "general"
             timeout_seconds = 60.0 if is_large_input else 30.0
             client = httpx.Client(timeout=timeout_seconds)
 
-            # Calculate max tokens based on the prompt length
-            prompt_length = len(prompt)
-            logger.debug(f"Prompt length: {prompt_length} characters")
-
-            # Adjust max_tokens for output based on input size to avoid token limit errors
-            max_output_tokens = 3000 if prompt_length < 30000 else 2000
 
             response = openai.chat.completions.create(
                 model="gpt-4o",
@@ -255,7 +250,7 @@ def generate_case_study(document_data: Dict[str, Any], audience: str = "general"
                 ],
                 response_format={"type": "json_object"},
                 temperature=0.7,
-                max_tokens=max_output_tokens,
+                max_tokens=3000, # Changed max_tokens here to a consistent value. Chunking handles length now.
                 timeout=timeout_seconds
             )
 
@@ -429,31 +424,41 @@ def _generate_with_openai(extracted_text: str, audience: str = "general", is_lar
         # Use a longer timeout for large inputs
         timeout_seconds = 40.0 if is_large_input else 20.0
 
-        # Calculate max tokens based on the prompt length
-        prompt_length = len(prompt)
-        logger.debug(f"Prompt length: {prompt_length} characters")
+        # Break large text into manageable chunks
+        chunk_size = 15000  # Characters per chunk
+        chunks = textwrap.wrap(extracted_text, chunk_size)
+        logger.debug(f"Split text into {len(chunks)} chunks")
 
-        # Adjust max_tokens for output based on input size to avoid token limit errors
-        max_output_tokens = 2000 if prompt_length < 20000 else 1500
+        # Process each chunk separately
+        final_result = {}
+        for i, chunk in enumerate(chunks):
+            chunk_prompt = prompt.replace(extracted_text, f"[Part {i+1}/{len(chunks)}]:\n{chunk}")
+            max_output_tokens = 2000  # Consistent token limit for chunks
 
-        response = openai.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "You are a professional case study writer who creates compelling business narratives."},
-                {"role": "user", "content": prompt}
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.7,
-            max_tokens=max_output_tokens,
-            timeout=timeout_seconds
-        )
+            response = openai.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a professional case study writer who creates compelling business narratives."},
+                    {"role": "user", "content": chunk_prompt}
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.7,
+                max_tokens=max_output_tokens,
+                timeout=timeout_seconds
+            )
 
-        logger.debug("Successfully received OpenAI response")
-        try:
-            return json.loads(response.choices[0].message.content)
-        except json.JSONDecodeError as json_err:
-            logger.error(f"Failed to parse OpenAI response as JSON: {str(json_err)}")
-            return None
+            try:
+                chunk_result = json.loads(response.choices[0].message.content)
+                # Accumulate results from chunks.  A more sophisticated merging strategy might be needed for real-world applications.
+                for key in chunk_result:
+                    if key not in final_result:
+                        final_result[key] = ""
+                    final_result[key] += chunk_result[key] + " "
+            except json.JSONDecodeError as json_err:
+                logger.error(f"Failed to parse OpenAI response as JSON: {str(json_err)}")
+                return None
+
+        return final_result
 
     except Exception as e:
         logger.error(f"Error in OpenAI case study generation: {str(e)}")
@@ -763,7 +768,7 @@ def improve_text(text: str, improvement_type: str = "improve") -> str:
     except Exception as e:
         logger.error(f"Error improving text: {str(e)}")
         # Return original text if there's an error
-        logger.info("Returning original text due to error in OpenAI API call")
+        logger.info("Returning original text due to error in OpenAI API call.")
         return text
 
 def split_text(text, max_tokens=5000):
@@ -781,11 +786,11 @@ def split_text(text, max_tokens=5000):
     chunks = []
     currentchunk = ""
     for p in paragraphs:
-        if len(current_chunk) + len(p) < max_tokens:
-            current_chunk += p + "\n\n"
+        if len(currentchunk) + len(p) < max_tokens:
+            currentchunk += p + "\n\n"
         else:
-            chunks.append(current_chunk)
-            current_chunk = p + "\n\n"
-    if current_chunk:
-        chunks.append(current_chunk)
+            chunks.append(currentchunk)
+            currentchunk = p + "\n\n"
+    if currentchunk:
+        chunks.append(currentchunk)
     return chunks

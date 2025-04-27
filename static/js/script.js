@@ -26,18 +26,20 @@ function initializeTinyMCE() {
         selector: '#editor',
         height: 500,
         menubar: true,
-        promotion: false, // Disable promotion
-        branding: false, // Remove branding
-        suffix: '.min',  // Use minified version
-        // Use a minimal set of plugins to avoid loading errors
-        plugins: 'lists link autolink',
+        promotion: false,
+        branding: false,
+        relative_urls: false,
+        convert_urls: false,
+        plugins: 'lists link image',
         toolbar: 'undo redo | formatselect | ' +
         'bold italic | alignleft aligncenter ' +
         'alignright alignjustify | bullist numlist | ' +
-        'removeformat',
+        'link image | removeformat',
         content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 16px; }',
-        // Silence warnings
         readonly: false,
+        images_upload_handler: function (blobInfo, success, failure) {
+            success('data:' + blobInfo.blob().type + ';base64,' + blobInfo.base64());
+        },
         setup: function(editor) {
             editor.on('KeyUp', function(e) {
                 // Save content when user stops typing

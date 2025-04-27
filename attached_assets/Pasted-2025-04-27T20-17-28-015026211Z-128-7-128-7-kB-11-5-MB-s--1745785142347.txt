@@ -1,0 +1,59 @@
+2025-04-27T20:17:28.015026211Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 128.7/128.7 kB 11.5 MB/s eta 0:00:00
+2025-04-27T20:17:28.024879963Z Downloading werkzeug-3.1.3-py3-none-any.whl (224 kB)
+2025-04-27T20:17:28.038276205Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 224.5/224.5 kB 19.1 MB/s eta 0:00:00
+2025-04-27T20:17:28.048522085Z Downloading XlsxWriter-3.2.3-py3-none-any.whl (169 kB)
+2025-04-27T20:17:28.061242403Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 169.4/169.4 kB 15.4 MB/s eta 0:00:00
+2025-04-27T20:17:28.071156456Z Downloading certifi-2025.4.26-py3-none-any.whl (159 kB)
+2025-04-27T20:17:28.083255372Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 159.6/159.6 kB 14.8 MB/s eta 0:00:00
+2025-04-27T20:17:28.093486412Z Downloading packaging-25.0-py3-none-any.whl (66 kB)
+2025-04-27T20:17:28.104753312Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 66.5/66.5 kB 6.4 MB/s eta 0:00:00
+2025-04-27T20:17:28.114936871Z Downloading annotated_types-0.7.0-py3-none-any.whl (13 kB)
+2025-04-27T20:17:28.135544093Z Downloading babel-2.17.0-py3-none-any.whl (10.2 MB)
+2025-04-27T20:17:28.235194798Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.2/10.2 MB 104.9 MB/s eta 0:00:00
+2025-04-27T20:17:28.24504119Z Downloading dateparser-1.2.1-py3-none-any.whl (295 kB)
+2025-04-27T20:17:28.262092613Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 295.7/295.7 kB 18.8 MB/s eta 0:00:00
+2025-04-27T20:17:28.271885984Z Downloading greenlet-3.2.1-cp311-cp311-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (583 kB)
+2025-04-27T20:17:28.289450087Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 583.9/583.9 kB 36.6 MB/s eta 0:00:00
+2025-04-27T20:17:28.299204247Z Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+2025-04-27T20:17:28.319278689Z Downloading MarkupSafe-3.0.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (23 kB)
+2025-04-27T20:17:28.338515284Z Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+2025-04-27T20:17:28.351548779Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 229.9/229.9 kB 19.7 MB/s eta 0:00:00
+2025-04-27T20:17:28.363152495Z Downloading tld-0.13-py2.py3-none-any.whl (263 kB)
+2025-04-27T20:17:28.376562827Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 263.8/263.8 kB 21.9 MB/s eta 0:00:00
+2025-04-27T20:17:28.386362948Z Downloading typing_inspection-0.4.0-py3-none-any.whl (14 kB)
+2025-04-27T20:17:28.404728377Z Downloading pytz-2025.2-py2.py3-none-any.whl (509 kB)
+2025-04-27T20:17:28.419608057Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 509.2/509.2 kB 38.9 MB/s eta 0:00:00
+2025-04-27T20:17:28.429676473Z Downloading regex-2024.11.6-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (792 kB)
+2025-04-27T20:17:28.446981681Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 792.7/792.7 kB 52.2 MB/s eta 0:00:00
+2025-04-27T20:17:28.456748262Z Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+2025-04-27T20:17:28.476210772Z Downloading tzlocal-5.3.1-py3-none-any.whl (18 kB)
+2025-04-27T20:17:28.495421856Z Downloading lxml_html_clean-0.4.2-py3-none-any.whl (14 kB)
+2025-04-27T20:17:28.811342782Z Installing collected packages: pytz, XlsxWriter, urllib3, tzlocal, typing-extensions, tqdm, tld, sniffio, six, regex, pypdf2, psycopg2-binary, pillow, packaging, MarkupSafe, lxml, jiter, itsdangerous, idna, h11, greenlet, dnspython, distro, click, charset_normalizer, certifi, blinker, babel, annotated-types, Werkzeug, typing-inspection, sqlalchemy, python-pptx, python-docx, python-dateutil, pydantic-core, pdf2image, lxml_html_clean, Jinja2, httpcore, gunicorn, email-validator, courlan, anyio, pydantic, httpx, flask, dateparser, openai, justext, htmldate, flask-sqlalchemy, trafilatura
+2025-04-27T20:17:34.168401519Z Successfully installed Jinja2-3.1.6 MarkupSafe-3.0.2 Werkzeug-3.1.3 XlsxWriter-3.2.3 annotated-types-0.7.0 anyio-4.9.0 babel-2.17.0 blinker-1.9.0 certifi-2025.4.26 charset_normalizer-3.4.1 click-8.1.8 courlan-1.3.2 dateparser-1.2.1 distro-1.9.0 dnspython-2.7.0 email-validator-2.2.0 flask-3.1.0 flask-sqlalchemy-3.1.1 greenlet-3.2.1 gunicorn-23.0.0 h11-0.16.0 htmldate-1.9.3 httpcore-1.0.9 httpx-0.28.1 idna-3.10 itsdangerous-2.2.0 jiter-0.9.0 justext-3.0.2 lxml-5.4.0 lxml_html_clean-0.4.2 openai-1.76.0 packaging-25.0 pdf2image-1.17.0 pillow-11.2.1 psycopg2-binary-2.9.10 pydantic-2.11.3 pydantic-core-2.33.1 pypdf2-3.0.1 python-dateutil-2.9.0.post0 python-docx-1.1.2 python-pptx-1.0.2 pytz-2025.2 regex-2024.11.6 six-1.17.0 sniffio-1.3.1 sqlalchemy-2.0.40 tld-0.13 tqdm-4.67.1 trafilatura-2.0.0 typing-extensions-4.13.2 typing-inspection-0.4.0 tzlocal-5.3.1 urllib3-2.4.0
+2025-04-27T20:17:34.342048078Z 
+2025-04-27T20:17:34.342068488Z [notice] A new release of pip is available: 24.0 -> 25.1
+2025-04-27T20:17:34.342071049Z [notice] To update, run: pip install --upgrade pip
+2025-04-27T20:17:40.561044041Z ==> Uploading build...
+2025-04-27T20:17:47.419987145Z ==> Uploaded in 5.3s. Compression took 1.6s
+2025-04-27T20:17:47.450759596Z ==> Build successful 🎉
+2025-04-27T20:17:49.671244643Z ==> Deploying...
+2025-04-27T20:18:01.315256703Z ==> Running 'python app.py'
+2025-04-27T20:18:02.255304Z WARNING:__main__:No DATABASE_URL environment variable found, using SQLite
+2025-04-27T20:18:02.326897251Z Traceback (most recent call last):
+2025-04-27T20:18:02.326914571Z   File "/opt/render/project/src/app.py", line 61, in <module>
+2025-04-27T20:18:02.326943092Z     from processors.document_processor import process_document
+2025-04-27T20:18:02.326964943Z   File "/opt/render/project/src/processors/document_processor.py", line 992
+2025-04-27T20:18:02.327009893Z     return {
+2025-04-27T20:18:02.327023094Z            ^
+2025-04-27T20:18:02.327027124Z SyntaxError: '{' was never closed
+2025-04-27T20:18:04.368439765Z ==> Exited with status 1
+2025-04-27T20:18:04.385924142Z ==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+2025-04-27T20:18:05.621296643Z ==> Running 'python app.py'
+2025-04-27T20:18:06.651037625Z WARNING:__main__:No DATABASE_URL environment variable found, using SQLite
+2025-04-27T20:18:06.717752855Z Traceback (most recent call last):
+2025-04-27T20:18:06.717773056Z   File "/opt/render/project/src/app.py", line 61, in <module>
+2025-04-27T20:18:06.717833687Z     from processors.document_processor import process_document
+2025-04-27T20:18:06.717845677Z   File "/opt/render/project/src/processors/document_processor.py", line 992
+2025-04-27T20:18:06.717849017Z     return {
+2025-04-27T20:18:06.717851547Z            ^
+2025-04-27T20:18:06.717854427Z SyntaxError: '{' was never closed
