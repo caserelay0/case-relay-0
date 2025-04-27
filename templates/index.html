@@ -1,0 +1,286 @@
+{% extends "layout.html" %}
+
+{% block title %}AI Case Study Generator{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="header text-center">
+        <h1>AI Case Study Generator</h1>
+        <p class="lead">Upload a document to generate a professional case study with AI</p>
+    </div>
+    
+    <!-- Alert Container -->
+    <div id="alert-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+    
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="upload-form">
+                <h2 class="mb-4">Upload Documents</h2>
+                
+                <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="document-upload">Select documents to generate a case study</label>
+                        <div class="card mb-3 p-3 bg-light">
+                            <div class="input-group">
+                                <div class="custom-file">
+                                    <input type="file" class="custom-file-input" id="document-upload" 
+                                           name="file" accept=".pdf,.docx,.pptx,.txt" multiple required>
+                                    <label class="custom-file-label" for="document-upload">Choose files...</label>
+                                </div>
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary" type="button" id="clear-files">Clear</button>
+                                </div>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted mb-2">
+                            <strong>Supported formats:</strong> PDF, DOCX, PPTX, TXT (Max size: {{ max_file_size|int }}MB per file)
+                        </small>
+                        <div class="mt-2 text-muted">
+                            <i class="fas fa-info-circle"></i> You can upload 2-4 files at once. Total combined size must not exceed {{ max_total_size|int }}MB.
+                        </div>
+                        <div class="mt-2 alert alert-info">
+                            <i class="fas fa-exclamation-circle"></i> 
+                            <strong>Recommendation:</strong> For best results and to avoid connection issues, keep individual files under 50MB and total submission under 100MB when possible.
+                        </div>
+                        <div id="selected-files" class="mt-2"></div>
+                    </div>
+                    
+                    <button type="submit" id="generate-btn" class="btn btn-primary btn-lg btn-block mt-4">
+                        <span id="btn-text">Generate Case Study</span>
+                        <span id="loading-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                    
+                    <div id="processing-alert" class="alert alert-info mt-3 d-none">
+                        <strong><i class="fas fa-info-circle"></i> Processing your files...</strong>
+                        <p class="mb-0">This may take a few moments depending on the file size and complexity. Please don't close this window.</p>
+                        <div class="progress mt-2">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h3 class="mb-0">How It Works</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-3">
+                            <div class="h1 text-primary mb-2">
+                                <i class="fas fa-file-upload"></i>
+                            </div>
+                            <h5>Upload Documents</h5>
+                            <p class="small text-muted">Upload multiple PDFs, DOCXs, PPTXs, or text files</p>
+                        </div>
+                        <div class="col-md-4 text-center mb-3">
+                            <div class="h1 text-primary mb-2">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <h5>AI Processing</h5>
+                            <p class="small text-muted">Our AI extracts and transforms content</p>
+                        </div>
+                        <div class="col-md-4 text-center mb-3">
+                            <div class="h1 text-primary mb-2">
+                                <i class="fas fa-edit"></i>
+                            </div>
+                            <h5>Edit & Download</h5>
+                            <p class="small text-muted">Customize, refine, and export your case study</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Update file input label when files are selected
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInput = document.getElementById('document-upload');
+        const fileLabel = document.querySelector('.custom-file-label');
+        const selectedFiles = document.getElementById('selected-files');
+        const form = document.querySelector('form');
+        const generateBtn = document.getElementById('generate-btn');
+        const btnText = document.getElementById('btn-text');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const processingAlert = document.getElementById('processing-alert');
+        const clearFilesBtn = document.getElementById('clear-files');
+        
+        // Add event listener for the clear button
+        clearFilesBtn.addEventListener('click', function() {
+            // Clear the file input
+            fileInput.value = '';
+            
+            // Update the label
+            fileLabel.textContent = 'Choose files...';
+            
+            // Clear the selected files display
+            selectedFiles.innerHTML = '';
+        });
+        
+        // Show loading indicator when form is submitted
+        form.addEventListener('submit', function(e) {
+            // Don't show loading indicator if there are no files or if file size exceeds limit
+            const totalSize = Array.from(fileInput.files).reduce((acc, file) => acc + file.size, 0);
+            const maxTotalSize = {{ max_total_size }} * 1024 * 1024;
+            
+            if (fileInput.files.length === 0 || totalSize > maxTotalSize) {
+                return; // Let the form validation handle this
+            }
+            
+            // Show loading indicator
+            btnText.textContent = 'Processing...';
+            loadingSpinner.classList.remove('d-none');
+            generateBtn.disabled = true;
+            processingAlert.classList.remove('d-none');
+            
+            // If process takes more than 20 seconds, show a more detailed message
+            setTimeout(function() {
+                if (processingAlert.classList.contains('d-none')) return;
+                
+                processingAlert.innerHTML = `
+                    <strong><i class="fas fa-info-circle"></i> Still working...</strong>
+                    <p class="mb-0">Large or complex documents may take a bit longer to process. Please be patient.</p>
+                    <div class="progress mt-2">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%"></div>
+                    </div>
+                `;
+            }, 20000);
+        });
+        
+        fileInput.addEventListener('change', function(e) {
+            const files = Array.from(this.files);
+            
+            if (files.length > 0) {
+                // Update label
+                fileLabel.textContent = files.length > 1 
+                    ? `${files.length} files selected` 
+                    : files[0].name;
+                
+                // Show file details
+                selectedFiles.innerHTML = '<div class="list-group mt-2">';
+                let totalSize = 0;
+                
+                files.forEach(file => {
+                    totalSize += file.size;
+                    const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+                    const icon = getFileIcon(file.name);
+                    
+                    selectedFiles.innerHTML += `
+                        <div class="list-group-item list-group-item-action flex-column align-items-start p-2">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1"><i class="${icon} mr-2"></i> ${file.name}</h6>
+                                <div>
+                                    <small class="text-muted mr-2">${sizeInMB} MB</small>
+                                    <button type="button" class="btn btn-sm btn-danger remove-file" data-filename="${file.name}">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                selectedFiles.innerHTML += '</div>';
+                
+                // Check total size
+                const totalSizeInMB = (totalSize / (1024 * 1024)).toFixed(2);
+                const maxTotalSize = {{ max_total_size }} * 1024 * 1024;
+                
+                if (totalSize > maxTotalSize) {
+                    selectedFiles.innerHTML += `
+                        <div class="alert alert-danger mt-2">
+                            <i class="fas fa-exclamation-triangle"></i> 
+                            Total size (${totalSizeInMB} MB) exceeds the {{ max_total_size|int }}MB limit.
+                        </div>
+                    `;
+                } else if (totalSize > 100 * 1024 * 1024) {
+                    // Warning for large but acceptable files
+                    selectedFiles.innerHTML += `
+                        <div class="alert alert-warning mt-2">
+                            <i class="fas fa-exclamation-triangle"></i> 
+                            Total size (${totalSizeInMB} MB) is acceptable but may cause longer processing times.
+                            For quicker results, consider reducing the total size if possible.
+                        </div>
+                    `;
+                } else {
+                    selectedFiles.innerHTML += `
+                        <div class="text-muted mt-2">
+                            <small>Total size: ${totalSizeInMB} MB</small>
+                        </div>
+                    `;
+                }
+            } else {
+                fileLabel.textContent = 'Choose files...';
+                selectedFiles.innerHTML = '';
+            }
+        });
+        
+        // Helper function to get appropriate icon based on file extension
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            
+            switch (ext) {
+                case 'pdf':
+                    return 'fas fa-file-pdf text-danger';
+                case 'doc':
+                case 'docx':
+                    return 'fas fa-file-word text-primary';
+                case 'ppt':
+                case 'pptx':
+                    return 'fas fa-file-powerpoint text-warning';
+                case 'txt':
+                    return 'fas fa-file-alt text-secondary';
+                default:
+                    return 'fas fa-file text-muted';
+            }
+        }
+        
+        // Add event listener for remove buttons using event delegation
+        selectedFiles.addEventListener('click', function(e) {
+            // Check if the clicked element is a remove button or its icon
+            const removeBtn = e.target.closest('.remove-file');
+            if (!removeBtn) return;
+            
+            // Get the filename to remove
+            const filenameToRemove = removeBtn.getAttribute('data-filename');
+            
+            // Get the current files from the input
+            const currentFiles = Array.from(fileInput.files);
+            
+            // Create a new FileList without the removed file
+            const dataTransfer = new DataTransfer();
+            
+            // Add all files except the one to remove
+            currentFiles.forEach(file => {
+                if (file.name !== filenameToRemove) {
+                    dataTransfer.items.add(file);
+                }
+            });
+            
+            // Update the file input value
+            fileInput.files = dataTransfer.files;
+            
+            // Trigger change event to update UI
+            const event = new Event('change', { bubbles: true });
+            fileInput.dispatchEvent(event);
+        });
+    });
+</script>
+{% endblock %}

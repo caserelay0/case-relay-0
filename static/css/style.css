@@ -1,0 +1,111 @@
+/* Main styles for the Case Study Generator */
+
+/* General Styles */
+body {
+    background-color: #f8f9fa;
+    color: #212529;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+/* Header Styles */
+.header {
+    padding: 1.5rem 0;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.header h1 {
+    margin-bottom: 0.5rem;
+}
+
+/* Upload Form Styles */
+.upload-form {
+    background-color: #fff;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.upload-form .form-control-file {
+    padding: 1rem;
+    border: 2px dashed #dee2e6;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    margin-bottom: 1rem;
+}
+
+/* Editor Styles */
+.editor-container {
+    background-color: #fff;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+}
+
+.editor-sidebar {
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    border: 1px solid #dee2e6;
+}
+
+/* TinyMCE overrides */
+.tox-tinymce {
+    border-radius: 0.5rem !important;
+    border: 1px solid #dee2e6 !important;
+}
+
+/* Image selection styles */
+.image-selector {
+    margin-top: 2rem;
+}
+
+.image-card {
+    border: 3px solid transparent;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 1rem;
+}
+
+.image-card:hover {
+    border-color: #6c757d;
+}
+
+.image-card.selected {
+    border-color: #0d6efd;
+}
+
+.image-card img {
+    width: 100%;
+    height: auto;
+}
+
+/* AI assist toolbar */
+.ai-assist-toolbar {
+    position: absolute;
+    background-color: #fff;
+    border-radius: 0.25rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    padding: 0.5rem;
+    z-index: 1000;
+    display: none;
+}
+
+.ai-assist-toolbar button {
+    margin-right: 0.5rem;
+}
+
+/* Responsive fixes */
+@media (max-width: 768px) {
+    .editor-sidebar {
+        margin-top: 2rem;
+    }
+}

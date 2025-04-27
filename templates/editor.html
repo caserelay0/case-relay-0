@@ -1,0 +1,125 @@
+{% extends "layout.html" %}
+
+{% block title %}Editor - AI Case Study Generator{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="header">
+        <h1 class="mb-3">Edit Your Case Study</h1>
+        <p class="lead">Customize the generated content to suit your needs</p>
+    </div>
+    
+    <!-- Alert Container -->
+    <div id="alert-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="editor-container">
+                <div class="mb-4">
+                    <textarea id="editor">
+                        {% if case_study.html_content %}
+                            {{ case_study.html_content|safe }}
+                        {% else %}
+                            <h1>{{ case_study.title }}</h1>
+                            <h2>Challenge</h2>
+                            <p>{{ case_study.challenge }}</p>
+                            <h2>Approach</h2>
+                            <p>{{ case_study.approach }}</p>
+                            <h2>Solution</h2>
+                            <p>{{ case_study.solution }}</p>
+                            <h2>Outcomes</h2>
+                            <p>{{ case_study.outcomes }}</p>
+                        {% endif %}
+                    </textarea>
+                </div>
+                
+                <div class="btn-toolbar justify-content-between" role="toolbar">
+                    <div class="btn-group">
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left mr-1"></i> Back
+                        </a>
+                    </div>
+                    <div class="btn-group">
+                        <button onclick="downloadCaseStudy()" class="btn btn-primary">
+                            <i class="fas fa-download mr-1"></i> Download
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="editor-sidebar mb-4">
+                <h3 class="mb-3">AI-Assistance</h3>
+                <p class="text-muted small mb-4">Select text in the editor to get AI improvement options</p>
+                
+                <div class="form-group">
+                    <label for="audience-selector">Change Target Audience</label>
+                    <select class="form-control mb-2" id="audience-selector">
+                        <option value="general" selected>General Audience</option>
+                        <option value="executive">Executive/C-Suite</option>
+                        <option value="technical">Technical Team</option>
+                        <option value="marketing">Marketing Team</option>
+                        <option value="investors">Investors/Stakeholders</option>
+                    </select>
+                    <button onclick="regenerateCaseStudy()" id="regenerate-btn" class="btn btn-outline-primary btn-block">
+                        <span id="regenerate-spinner" class="spinner-border spinner-border-sm mr-2" role="status" style="display: none;"></span>
+                        Regenerate for Selected Audience
+                    </button>
+                </div>
+            </div>
+            
+            <div class="editor-sidebar image-selector">
+                <h3 class="mb-3">Case Study Images</h3>
+                <p class="text-muted small mb-3">Select images to include in your case study</p>
+                
+                <input type="hidden" id="selected-images" value="[]">
+                
+                <div class="row">
+                    {% for image in case_study.images %}
+                    <div class="col-md-6 mb-3">
+                        <div class="image-card" data-image-id="{{ image.id }}">
+                            <img 
+                                src="data:image/{{ image.type }};base64,{{ image.data }}" 
+                                alt="{{ image.caption }}" 
+                                class="img-fluid"
+                            >
+                            <div class="p-2 text-center">
+                                <small>{{ image.caption }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Set first image as selected by default
+    document.addEventListener('DOMContentLoaded', function() {
+        const firstImage = document.querySelector('.image-card');
+        if (firstImage) {
+            firstImage.classList.add('selected');
+            const imageId = firstImage.dataset.imageId;
+            document.getElementById('selected-images').value = JSON.stringify([imageId]);
+        }
+    });
+</script>
+{% endblock %}

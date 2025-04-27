@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+
+{% block title %}Error - AI Case Study Generator{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="header text-center">
+        <h1>Oops! Something went wrong</h1>
+        <p class="lead">We're sorry, but an error occurred</p>
+    </div>
+    
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h2 class="mb-0 h4">Error Details</h2>
+                </div>
+                <div class="card-body">
+                    <h3 class="h5 mb-3">{{ error }}</h3>
+                    
+                    {% if details %}
+                    <div class="alert alert-secondary">
+                        <p class="mb-0">{{ details }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% if technical_details %}
+                    <div class="mt-4">
+                        <p class="text-muted small mb-2">Technical information (for support):</p>
+                        <div class="bg-light p-3 rounded">
+                            <code class="text-muted small">{{ technical_details }}</code>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-4">
+                        <h4 class="h6">Suggestions:</h4>
+                        <ul class="text-muted">
+                            <li>Try again with different files</li>
+                            <li>Use smaller files (less than 10MB each)</li>
+                            <li>Try with fewer files at once</li>
+                            <li>Make sure files are not corrupted or password-protected</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="fas fa-home mr-1"></i> Return to Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
