@@ -19,6 +19,13 @@ reuse_port = True
 # Log level
 loglevel = "info"
 
-# Maximum request size (30MB)
+# Maximum request size (100MB)
 limit_request_line = 8190
 limit_request_field_size = 0
+limit_request_fields = 32768  # Increase max number of header fields
+worker_class = 'sync'  # Use sync worker for more reliable file uploads
+max_requests = 1000
+max_requests_jitter = 50
+worker_tmp_dir = '/tmp'  # Ensure temp directory is accessible 
+timeout = 300  # 5 minutes timeout
+keepalive = 5  # Keep connections alive for better performance

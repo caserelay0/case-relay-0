@@ -270,28 +270,55 @@ def upload_file():
         logger.debug(f"Uploading document to remote API: {primary_filepath}")
         
         try:
-            # Open the file and send it to the API
-            with open(primary_filepath, 'rb') as file_data:
-                upload_result = upload_document(
-                    file_data,
-                    primary_original_filename,
-                    primary_file_type
-                )
+            # Add retry logic for more robust upload handling
+            max_retries = 2
+            retry_count = 0
+            upload_result = None
+            upload_error = None
+            
+            while retry_count < max_retries and not upload_result:
+                try:
+                    # Open the file and send it to the API using an optimized approach
+                    with open(primary_filepath, 'rb') as file_data:
+                        logger.debug(f"Attempt {retry_count + 1}: Uploading document to API")
+                        upload_result = upload_document(
+                            file_data,
+                            primary_original_filename,
+                            primary_file_type
+                        )
+                except Exception as e:
+                    upload_error = e
+                    logger.warning(f"Upload attempt {retry_count + 1} failed: {str(e)}")
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        logger.debug(f"Waiting 3 seconds before retry...")
+                        time.sleep(3)  # Wait before retrying
+            
+            # If all retries failed, raise the last error
+            if not upload_result:
+                if upload_error:
+                    raise upload_error
+                else:
+                    raise APIError("Upload failed after retries with no specific error")
                 
-                # Store the remote document metadata
-                remote_document_id = upload_result.get('document_id')
-                
-                primary_document_data = {
-                    'remote_document_id': remote_document_id,
-                    'status': 'uploaded', 
-                    'file_type': primary_file_type,
-                    'file_size': primary_file_size,
-                    'upload_time': time.time(),
-                    'text': upload_result.get('text_preview', ''),  # Store preview if available
-                    'images': []  # Will be populated from case study
-                }
-                
-                logger.debug(f"Document uploaded to API with ID: {remote_document_id}")
+            # Store the remote document metadata
+            remote_document_id = upload_result.get('document_id')
+            
+            # Validate we got a document ID
+            if not remote_document_id:
+                raise APIError("Missing document_id in API response")
+            
+            primary_document_data = {
+                'remote_document_id': remote_document_id,
+                'status': 'uploaded', 
+                'file_type': primary_file_type,
+                'file_size': primary_file_size,
+                'upload_time': time.time(),
+                'text': upload_result.get('text_preview', ''),  # Store preview if available
+                'images': []  # Will be populated from case study
+            }
+            
+            logger.debug(f"Document successfully uploaded to API with ID: {remote_document_id}")
                 
         except (APIError, APITimeoutError, APIConnectionError) as api_err:
             logger.error(f"API error during document upload: {str(api_err)}")

@@ -68,22 +68,38 @@ def upload_document(file_data: BinaryIO, filename: str, file_type: str = None) -
         headers["Authorization"] = f"Bearer {API_KEY}"
     
     try:
-        # Create a multipart form with the file and metadata
+        # Create a more detailed multipart form with the file and metadata
+        mime_type = 'application/octet-stream'  # Default safer MIME type
+        
+        # Set correct MIME type based on file_type
+        if file_type == 'pdf':
+            mime_type = 'application/pdf'
+        elif file_type == 'docx':
+            mime_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        elif file_type == 'pptx':
+            mime_type = 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        elif file_type == 'txt':
+            mime_type = 'text/plain'
+            
         files = {
-            'document': (filename, file_data, f'application/{file_type}'),
+            'document': (filename, file_data, mime_type),
         }
         
         data = {
             'document_type': file_type,
+            'process_images': 'true',  # Explicitly request image processing
         }
         
-        # Make the request with a reasonable timeout
+        # Make the request with a reasonable timeout and more robust settings
         with httpx.Client(timeout=TIMEOUT_MEDIUM) as client:
+            # Increase max_redirects and set more explicit connection parameters
             response = client.post(
                 f"{API_URL}/documents",
                 files=files,
                 data=data,
-                headers=headers
+                headers=headers,
+                follow_redirects=True,
+                max_redirects=5
             )
             
         if response.status_code == 413:
