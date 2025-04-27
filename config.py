@@ -18,7 +18,7 @@ PROCESSING_TIMEOUT = 300  # 5 minute timeout for document processing
 
 # Remote API configuration
 # URL of the Render API for document processing and case study generation
-RENDER_API_URL = os.environ.get('RENDER_API_URL', 'https://your-render-api.onrender.com')
+RENDER_API_URL = os.environ.get('RENDER_API_URL', 'https://case-relay-mvp.onrender.com')
 
 # API key for authentication with the Render API (if required)
 RENDER_API_KEY = os.environ.get('RENDER_API_KEY')
