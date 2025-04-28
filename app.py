@@ -11,6 +11,9 @@ from sqlalchemy.orm import DeclarativeBase
 
 # Import utility functions
 from utils.file_utils import allowed_file, save_uploaded_file, cleanup_file
+from utils.api_client import APITimeoutError, APIConnectionError, APIError
+from ai.generator import generate_case_study
+from processors.document_processor import process_document
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -593,7 +596,38 @@ def upload_file():
 @app.route('/editor')
 def editor():
     """Display the editor page with the generated case study"""
-    # Check if document ID exists in session
+    # Check if 'local' flag is in URL params (for local processing mode)
+    is_local_processing = request.args.get('local') == 'true'
+    
+    # Handle local API processing case (data in session storage will be loaded via JavaScript)
+    if is_local_processing:
+        logger.debug("Editor opened in local processing mode")
+        
+        # Create empty data structures for the template - actual data will be loaded from session storage in JS
+        document_data = {
+            'text': '',
+            'images': []
+        }
+        
+        case_study_data = {
+            'title': '',
+            'challenge': '',
+            'approach': '',
+            'solution': '',
+            'outcomes': '',
+            'summary': '',
+            'key_points': [],
+            'images': [],
+            'html_content': '<p>Loading locally processed content...</p>'
+        }
+        
+        # Pass a flag to the template to indicate local processing mode
+        return render_template('editor.html',
+                              case_study=case_study_data,
+                              document_data=document_data,
+                              is_local_processing=True)
+    
+    # Standard mode - data from the database
     if 'document_id' not in session or 'case_study_id' not in session:
         flash('No case study found. Please upload a document first.', 'danger')
         return redirect(url_for('index'))
@@ -643,7 +677,8 @@ def editor():
         
         return render_template('editor.html',
                               case_study=case_study_data,
-                              document_data=document_data)
+                              document_data=document_data,
+                              is_local_processing=False)
     
     except Exception as e:
         logger.error(f"Error retrieving case study data: {str(e)}")
@@ -971,6 +1006,74 @@ def save_content():
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error saving content: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/process', methods=['POST'])
+def api_process_document():
+    """API endpoint to process documents locally when the Render API is unavailable"""
+    logger.debug("API request received for /api/process")
+    
+    # Check if a file was uploaded
+    if 'document' not in request.files:
+        return jsonify({'error': 'No document file in request'}), 400
+    
+    file = request.files['document']
+    
+    # Check if the file has a name
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    
+    # Check allowed extensions
+    if not allowed_file(file.filename, app.config['ALLOWED_EXTENSIONS']):
+        return jsonify({'error': f'Invalid file type. Allowed types: {", ".join(app.config["ALLOWED_EXTENSIONS"])}'}), 400
+    
+    # Get audience from form data
+    audience = request.form.get('audience', 'general')
+    
+    try:
+        # Save the file temporarily
+        filepath = save_uploaded_file(file, app.config['UPLOAD_FOLDER'], app.config['ALLOWED_EXTENSIONS'])
+        
+        if not filepath:
+            return jsonify({'error': 'Failed to save uploaded file'}), 500
+        
+        # Process the document locally
+        logger.debug(f"Processing document locally: {filepath}")
+        document_data = process_document(filepath)
+        
+        if not document_data or document_data.get('metadata', {}).get('status') == 'error':
+            error_msg = document_data.get('metadata', {}).get('error', 'Unknown processing error')
+            cleanup_file(filepath)
+            return jsonify({'error': error_msg}), 500
+            
+        # Generate case study using OpenAI
+        logger.debug("Generating case study locally with OpenAI")
+        case_study_data = generate_case_study(document_data, audience)
+        
+        if not case_study_data:
+            cleanup_file(filepath)
+            return jsonify({'error': 'Failed to generate case study'}), 500
+        
+        # Create a document ID for this request
+        document_id = str(uuid.uuid4())
+        
+        # Create a response with document ID and case study data
+        response = {
+            'document_id': document_id,
+            'case_study': case_study_data,
+            'text_preview': document_data.get('text', '')[:500] + '...' if len(document_data.get('text', '')) > 500 else document_data.get('text', '')
+        }
+        
+        # Cleanup temporary file
+        cleanup_file(filepath)
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        logger.error(f"Error in /api/process endpoint: {str(e)}")
+        # Clean up any temporary files
+        if 'filepath' in locals() and filepath:
+            cleanup_file(filepath)
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
