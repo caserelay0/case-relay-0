@@ -23,7 +23,7 @@ def allowed_file(filename: str, allowed_extensions: List[str]) -> bool:
 
 def save_uploaded_file(file, upload_folder: str, allowed_extensions: List[str]) -> Optional[str]:
     """
-    Save an uploaded file to the specified folder
+    Save an uploaded file to the specified folder with optimization
     
     Args:
         file: The uploaded file object
@@ -39,16 +39,29 @@ def save_uploaded_file(file, upload_folder: str, allowed_extensions: List[str]) 
             os.makedirs(upload_folder, exist_ok=True)
             
             # Secure the filename
-            filename = secure_filename(file.filename)
+            original_filename = secure_filename(file.filename)
+            filename = f"{os.urandom(8).hex()}_{original_filename}"
             
             # Generate the file path
             filepath = os.path.join(upload_folder, filename)
             
-            # Save the file
-            file.save(filepath)
+            # Save the file with chunk processing for large files
+            chunk_size = 8192  # 8KB chunks
+            with open(filepath, 'wb') as f:
+                while True:
+                    chunk = file.read(chunk_size)
+                    if not chunk:
+                        break
+                    f.write(chunk)
             
             logger.debug(f"File saved: {filepath}")
             
+            # Implement basic file validation
+            if os.path.getsize(filepath) < 10:  # Minimum reasonable size
+                cleanup_file(filepath)
+                logger.error(f"File too small: {filepath}")
+                return None
+                
             return filepath
         except Exception as e:
             logger.error(f"Error saving file: {str(e)}")

@@ -92,14 +92,13 @@ def upload_document(file_data: BinaryIO, filename: str, file_type: str = None) -
         
         # Make the request with a reasonable timeout and more robust settings
         with httpx.Client(timeout=TIMEOUT_MEDIUM) as client:
-            # Increase max_redirects and set more explicit connection parameters
+            # Use follow_redirects but without max_redirects which isn't supported in our version
             response = client.post(
                 f"{API_URL}/documents",
                 files=files,
                 data=data,
                 headers=headers,
-                follow_redirects=True,
-                max_redirects=5
+                follow_redirects=True
             )
             
         if response.status_code == 413:
