@@ -82,7 +82,7 @@ def upload_document(file_data: BinaryIO, filename: str, file_type: str = None) -
             mime_type = 'text/plain'
             
         files = {
-            'document': (filename, file_data, mime_type),
+            'file': (filename, file_data, mime_type),
         }
         
         data = {
@@ -94,7 +94,7 @@ def upload_document(file_data: BinaryIO, filename: str, file_type: str = None) -
         with httpx.Client(timeout=TIMEOUT_MEDIUM) as client:
             # Use follow_redirects but without max_redirects which isn't supported in our version
             response = client.post(
-                f"{API_URL}/documents",
+                f"{API_URL}/api/process",
                 files=files,
                 data=data,
                 headers=headers,
